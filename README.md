@@ -2,8 +2,6 @@
 RL-Driven Stock Trading Strategy: Modelling and Implementation
 Deep Reinforcement Learning for Automated Stock Trading
 
-Certainly! Below is a README description for the project:
-
 ---
 
 # Algorithmic Trading Project
