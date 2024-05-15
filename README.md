@@ -2,129 +2,41 @@
 RL-Driven Stock Trading Strategy: Modelling and Implementation
 Deep Reinforcement Learning for Automated Stock Trading
 
+Certainly! Below is a README description for the project:
 
+---
 
-Input:
+# Algorithmic Trading Project
 
+## Overview
+This project implements an algorithmic trading strategy using reinforcement learning (RL) techniques. The goal is to develop a trading system that can autonomously make buy and sell decisions in financial markets based on historical data and learned patterns.
 
-import os
-os.chdir("/kaggle/input/trading/")
+## Features
+- **Data Preprocessing**: The project includes data preprocessing steps to clean and prepare financial data for model training.
+- **Reinforcement Learning Models**: A2C (Advantage Actor Critic), PPO (Proximal Policy Optimization), and DDPG (Deep Deterministic Policy Gradient) models are trained using historical data to learn trading strategies.
+- **Model Validation**: Trained models are validated using separate validation data to assess their performance and effectiveness in real-world scenarios.
+- **Trading Execution**: The best-performing model is selected based on validation results and used to execute trades in live trading environments.
+- **Performance Monitoring**: The project tracks and evaluates the performance of the trading strategy, including metrics such as Sharpe ratio and portfolio value.
 
-import time
-import random
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-%matplotlib inline
+## Requirements
+- Python 3.x
+- Pandas
+- NumPy
+- TensorFlow
+- Stable Baselines (RL library)
+- Matplotlib (for visualization, if applicable)
 
-from env.EnvMultipleStock_train import StockEnvTrain
-from env.EnvMultipleStock_validation import StockEnvValidation
-from env.EnvMultipleStock_trade import StockEnvTrade
+## Usage
+1. **Data Preparation**: Prepare historical financial data in CSV format. Ensure the data includes necessary features such as price, volume, and timestamps.
+2. **Data Preprocessing**: Use the provided preprocessing functions to clean and preprocess the data, including handling missing values, scaling features, and generating additional features if needed.
+3. **Model Training**: Train reinforcement learning models (A2C, PPO, DDPG) using the preprocessed data. Tune hyperparameters as necessary to optimize model performance.
+4. **Model Validation**: Validate trained models using separate validation data to evaluate their performance and select the best-performing model for trading.
+5. **Trading Execution**: Use the selected model to execute trades in live or simulated trading environments. Monitor the performance of the trading strategy and adjust as necessary.
 
-!pip uninstall -y tensorflow-probability
-!pip uninstall -y tensorflow-cloud
-!pip uninstall -y pytorch-lightning
-!pip uninstall -y tensorflow
-!pip uninstall -y gast
+## References
+- [Stable Baselines Documentation](https://stable-baselines.readthedocs.io/en/master/)
+- [OpenAI Gym Documentation](https://gym.openai.com/docs/)
+- [Reinforcement Learning: An Introduction by Richard S. Sutton and Andrew G. Barto](http://incompleteideas.net/book/the-book-2nd.html)
 
-!pip install -qq 'tensorflow==1.15.0'
-import tensorflow as tf
-
-!apt-get update > /dev/null
-!apt-get install -qq -y cmake libopenmpi-dev python3-dev zlib1g-dev
-!pip install -qq "stable-baselines[mpi]==2.9.0"
-
-from stable_baselines import GAIL, SAC
-from stable_baselines import ACER
-from stable_baselines import PPO2
-from stable_baselines import A2C
-from stable_baselines import DDPG
-from stable_baselines import TD3
-
-from stable_baselines.ddpg.policies import DDPGPolicy
-from stable_baselines.common.policies import MlpPolicy, MlpLstmPolicy, MlpLnLstmPolicy
-from stable_baselines.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise, AdaptiveParamNoiseSpec
-from stable_baselines.common.vec_env import DummyVecEnv
-
-                                                           
-                                                                            Dataset
-
-
-path = '/kaggle/input/trading/trading.csv'
-df = pd.read_csv(path)
-df.head()
-
-rebalance_window = 63
-validation_window = 63
-
-unique_trade_date = df[(df.datadate > 20151001)&(df.datadate <= 20200707)].datadate.unique()
-print(unique_trade_date)
-
-
-                                                                           Baseline
-
-def train_A2C(env_train, model_name, timesteps=25000):
-    start = time.time()
-    model = A2C('MlpPolicy', env_train, verbose=0)
-    model.learn(total_timesteps=timesteps)
-    end = time.time()
-
-  model.save(f"/kaggle/working/{model_name}")
-    print(' - Training time (A2C): ', (end - start) / 60, ' minutes')
-    return model
-
-def train_ACER(env_train, model_name, timesteps=25000):
-    start = time.time()
-    model = ACER('MlpPolicy', env_train, verbose=0)
-    model.learn(total_timesteps=timesteps)
-    end = time.time()
-
-  model.save(f"/kaggle/working/{model_name}")
-    print(' - Training time (A2C): ', (end - start) / 60, ' minutes')
-    return model
-
-def train_DDPG(env_train, model_name, timesteps=10000):
-    # add the noise objects for DDPG
-    n_actions = env_train.action_space.shape[-1]
-    param_noise = None
-    action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(n_actions), sigma=float(0.5) * np.ones(n_actions))
-
-  start = time.time()
-    model = DDPG('MlpPolicy', env_train, param_noise=param_noise, action_noise=action_noise)
-    model.learn(total_timesteps=timesteps)
-    end = time.time()
-
-   model.save(f"/kaggle/working/{model_name}")
-    print(' - Training time (DDPG): ', (end-start)/60,' minutes')
-    return model
-
-def train_PPO(env_train, model_name, timesteps=50000):
-    start = time.time()
-    model = PPO2('MlpPolicy', env_train, ent_coef = 0.005, nminibatches = 8)
-    
-  model.learn(total_timesteps=timesteps)
-    end = time.time()
-
-  model.save(f"/kaggle/working/{model_name}")
-    print(' - Training time (PPO): ', (end - start) / 60, ' minutes')
-    return model
-
-def train_GAIL(env_train, model_name, timesteps=1000):
-    start = time.time()
-    # generate expert trajectories
-    model = SAC('MLpPolicy', env_train, verbose=1)
-    generate_expert_traj(model, 'expert_model_gail', n_timesteps=100, n_episodes=10)
-
-   # Load dataset
-   dataset = ExpertDataset(expert_path='expert_model_gail.npz', traj_limitation=10, verbose=1)
-    model = GAIL('MLpPolicy', env_train, dataset, verbose=1)
-
-  model.learn(total_timesteps=1000)
-    end = time.time()
-
-  model.save(f"/kaggle/working/{model_name}")
-    print(' - Training time (PPO): ', (end - start) / 60, ' minutes')
-    return model
-
-
-    
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
